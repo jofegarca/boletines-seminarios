@@ -41,14 +41,9 @@ export async function generarBoletinGraduacionExcel(selectedEstaca) {
     const data = estudiantes.map((item) => {
       const bAlumno = item.historialCompleto;
 
-      const row = {
-        estudiante: item.estudiante,
-        barrio: item.barrio,
-        estaca: item.estaca,
-      };
-
       let totalCreditosPast = 0;
       let hasFailedPast = false;
+      const periodFields = {};
 
       for (const p of periods) {
         const matchingB = bAlumno.filter(
@@ -62,15 +57,15 @@ export async function generarBoletinGraduacionExcel(selectedEstaca) {
           ) || matchingB[0];
 
         if (bPeriod) {
-          row[`credito_${p.suffix}`] = bPeriod.credito || "No";
-          row[`asistenciaprom_${p.suffix}`] =
+          periodFields[`credito_${p.suffix}`] = bPeriod.credito || "No";
+          periodFields[`asistenciaprom_${p.suffix}`] =
             typeof bPeriod.asistenciaprom === "number"
               ? bPeriod.asistenciaprom
               : 0;
-          row[`dpr_${p.suffix}`] =
+          periodFields[`dpr_${p.suffix}`] =
             typeof bPeriod.dpr === "number" ? bPeriod.dpr : 0;
-          row[`lectura_${p.suffix}`] = bPeriod.lectura || "No";
-          row[`examen_${p.suffix}`] = bPeriod.examen || "No";
+          periodFields[`lectura_${p.suffix}`] = bPeriod.lectura || "No";
+          periodFields[`examen_${p.suffix}`] = bPeriod.examen || "No";
 
           if (p.suffix !== "actual_p2") {
             if ((bPeriod.credito || "").toLowerCase() === "si") {
@@ -80,25 +75,31 @@ export async function generarBoletinGraduacionExcel(selectedEstaca) {
             }
           }
         } else {
-          row[`credito_${p.suffix}`] = "NI";
-          row[`asistenciaprom_${p.suffix}`] = 0;
-          row[`dpr_${p.suffix}`] = 0;
-          row[`lectura_${p.suffix}`] = "NI";
-          row[`examen_${p.suffix}`] = "NI";
+          periodFields[`credito_${p.suffix}`] = "NI";
+          periodFields[`asistenciaprom_${p.suffix}`] = 0;
+          periodFields[`dpr_${p.suffix}`] = 0;
+          periodFields[`lectura_${p.suffix}`] = "NI";
+          periodFields[`examen_${p.suffix}`] = "NI";
         }
       }
 
       const isTrabajar =
         !hasFailedPast ||
         totalCreditosPast >= 4 ||
-        (totalCreditosPast >= 3 && row.credito_actual_p2 !== "NI");
+        (totalCreditosPast >= 3 && periodFields.credito_actual_p2 !== "NI");
 
-      row.status =
+      const status =
         (totalCreditosPast >= 4 && !hasFailedPast) || isTrabajar
           ? "Trabajar en Graduación"
           : "No Certifica";
 
-      return row;
+      return {
+        estudiante: item.estudiante,
+        barrio: item.barrio,
+        estaca: item.estaca,
+        status: status,
+        ...periodFields,
+      };
     });
 
     const ws = XLSX.utils.json_to_sheet(data);
